@@ -36,7 +36,9 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "User not found" });
-
+console.log('====================================');
+console.log(user);
+console.log('====================================');
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid password" });
 
@@ -196,6 +198,9 @@ export const getCart = async (req, res) => {
     res.json(fullCart);
 
   } catch (error) {
+    console.log('====================================');
+    console.log(error.message);
+    console.log('====================================');
     res.status(500).json({ msg: error.message });
   }
 };

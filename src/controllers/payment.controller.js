@@ -36,7 +36,7 @@ export const createCheckoutSession = async (req, res) => {
 
     res.json({ url: session.url });
   } catch (err) {
-    console.log("Payment error:", err);
+    console.log("Payment error:", err.message);
     res.status(500).json({ msg: "Payment failed" });
   }
 };
