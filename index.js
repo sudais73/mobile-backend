@@ -25,7 +25,7 @@ app.use("/api/orders", orderRoutes);
 app.use('/api/payments', paymentRoutes);
 
 
-app.get("/", (req, res) => res.send("API Running..."));
+app.get("/", (req, res) => res.send("API Running 123..."));
 
 const PORT = process.env.PORT || 5000;
 
@@ -33,4 +33,3 @@ app.listen(PORT, () => {
   connectDB();
   console.log(`Server running on port ${PORT}`);
 });
-// tGdzDP3qCTMJEdMe

@@ -36,9 +36,7 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "User not found" });
-console.log('====================================');
-console.log(user);
-console.log('====================================');
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid password" });
 
@@ -128,17 +126,50 @@ export const addToCart = async (req, res) => {
 
 
 
+// export const removeFromCart = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const { productId } = req.body;
+
+//     const user = await User.findById(userId);
+//     if (!user) return res.status(404).json({ msg: "User not found" });
+
+//     user.cartData = user.cartData.filter(
+//       item => item.productId.toString() !== productId.toString()
+//     );
+
+//     await user.save();
+
+//     const fullCart = await buildFullCart(user.cartData);
+
+//     res.json({
+//       msg: "Item removed",
+//       cart: fullCart
+//     });
+
+//   } catch (error) {
+//     res.status(500).json({ msg: error.message });
+//   }
+// };
+
+
 export const removeFromCart = async (req, res) => {
   try {
     const userId = req.user.id;
     const { productId } = req.body;
 
+    if (!productId) {
+      return res.status(400).json({ msg: "productId is required" });
+    }
+
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
-    user.cartData = user.cartData.filter(
-      item => item.productId.toString() !== productId.toString()
-    );
+    user.cartData = user.cartData.filter(item => {
+      // Make sure both sides are strings
+      const id = item.productId?.toString();
+      return id !== productId.toString();
+    });
 
     await user.save();
 
@@ -150,10 +181,10 @@ export const removeFromCart = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Remove from cart error:", error);
     res.status(500).json({ msg: error.message });
   }
 };
-
 
 export const updateCartQty = async (req, res) => {
   try {
