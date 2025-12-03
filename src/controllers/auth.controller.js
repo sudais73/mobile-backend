@@ -1,37 +1,29 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
-import 'dotenv/config';
-import axios from 'axios';
+import 'dotenv/config'
+import axios from 'axios'
 import { getUserIdFromToken } from "../utils/getUserId.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "my_jwt_secret";
 
-// ------------------------ AUTH ROUTES ------------------------
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+
+    // Check exist
     const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ msg: "Email already exists" });
+    if (exists) {
+      return res.status(400).json({ msg: "Email already exists" });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hashed });
+
+    const user = await User.create({
+      username,
+      email,
+      password: hashed,
+    });
 
     res.json({ msg: "User registered", user });
   } catch (error) {
@@ -42,13 +34,14 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid password" });
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ id: user._id, user }, JWT_SECRET, { expiresIn: "7d" });
 
     res.json({
       msg: "Login successful",
@@ -77,88 +70,97 @@ export const getUser = async (req, res) => {
     res.status(500).json({ msg: error.message });
   }
 };
-// ------------------------ UTILS ------------------------
+
+
+
+
+
 const fetchProduct = async (productId) => {
-  try {
-    const { data } = await axios.get(`https://fakestoreapi.com/products/${productId}`);
-    return data;
-  } catch (err) {
-    console.error(`Failed to fetch product ${productId}:`, err.message);
-    // Fallback product in case external API fails
-    return { title: "Unknown product", price: 0, _id: productId };
-  }
+  const { data } = await axios.get(
+    `https://fakestoreapi.com/products/${productId}`
+  );
+  return data;
 };
 
 const buildFullCart = async (cartData) => {
-  const fullCart = await Promise.all(
-    cartData.map(async (item) => {
-      try {
-        const product = await fetchProduct(item.productId);
-        return { product, quantity: item.quantity };
-      } catch {
-        return { product: { title: "Unknown product", price: 0, _id: item.productId }, quantity: item.quantity };
-      }
-    })
+  return Promise.all(
+    cartData.map(async (item) => ({
+      product: await fetchProduct(item.productId),
+      quantity: item.quantity
+    }))
   );
-  return fullCart.filter(Boolean);
 };
 
-// ------------------------ CART ROUTES ------------------------
-export const getCart = async (req, res) => {
-  try {
-    const userId = getUserIdFromToken(req);
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ msg: "User not found" });
-
-    const fullCart = await buildFullCart(user.cartData);
-    res.json(fullCart);
-  } catch (error) {
-    console.error("Get cart error:", error);
-    res.status(500).json({ msg: error.message });
-  }
-};
 
 export const addToCart = async (req, res) => {
   try {
-    const userId = getUserIdFromToken(req);
-    const { productId, quantity = 1 } = req.body;
-
-    if (!productId) return res.status(400).json({ msg: "productId is required" });
+    const userId = getUserIdFromToken(req)
+    
+    const { productId, quantity } = req.body;
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
-    const existingItem = user.cartData.find(item => item.productId === productId);
+    const existingItem = user.cartData.find(
+      item => item.productId === productId
+    );
+
     if (existingItem) {
-      existingItem.quantity += quantity;
+      existingItem.quantity += quantity || 1;
     } else {
-      user.cartData.push({ productId, quantity });
+      user.cartData.push({
+        productId,
+        quantity: quantity || 1
+      });
     }
 
     await user.save();
+
+    // Build full cart response
     const fullCart = await buildFullCart(user.cartData);
 
-    res.json({ msg: "Added to cart", cartData: fullCart });
+    return res.json({
+      msg: "Added to cart",
+      cartData: fullCart
+    });
+
   } catch (error) {
-    console.error("Add to cart error:", error);
+    console.log(error);
     res.status(500).json({ msg: error.message });
   }
 };
 
+
+
+
+
 export const removeFromCart = async (req, res) => {
   try {
-    const userId = getUserIdFromToken(req);
+    const userId = getUserIdFromToken(req)
+  
     const { productId } = req.body;
-    if (!productId) return res.status(400).json({ msg: "productId is required" });
+
+    if (!productId) {
+      return res.status(400).json({ msg: "productId is required" });
+    }
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
-    user.cartData = user.cartData.filter(item => item.productId !== productId);
+    user.cartData = user.cartData.filter(item => {
+      const id = item.productId?.toString();
+      return id !== productId.toString();
+    });
+
     await user.save();
 
     const fullCart = await buildFullCart(user.cartData);
-    res.json({ msg: "Item removed", cart: fullCart });
+
+    res.json({
+      msg: "Item removed",
+      cart: fullCart
+    });
+
   } catch (error) {
     console.error("Remove from cart error:", error);
     res.status(500).json({ msg: error.message });
@@ -167,39 +169,71 @@ export const removeFromCart = async (req, res) => {
 
 export const updateCartQty = async (req, res) => {
   try {
-    const userId = getUserIdFromToken(req);
+    const userId = getUserIdFromToken(req)
+  
     const { productId, quantity } = req.body;
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
-    const item = user.cartData.find(item => item.productId === productId);
-    if (!item) return res.status(404).json({ msg: "Item not in cart" });
+    const item = user.cartData.find(
+      item => item.productId.toString() === productId.toString()
+    );
+
+    if (!item)
+      return res.status(404).json({ msg: "Item not in cart" });
 
     item.quantity = quantity;
+
     await user.save();
 
     const fullCart = await buildFullCart(user.cartData);
-    res.json({ msg: "Quantity updated", cartData: fullCart });
+
+    res.json({
+      msg: "Quantity updated",
+      cartData: fullCart
+    });
+
   } catch (error) {
-    console.error("Update cart qty error:", error);
     res.status(500).json({ msg: error.message });
   }
 };
 
-export const clearCart = async (req, res) => {
+
+
+export const getCart = async (req, res) => {
   try {
-    const userId = getUserIdFromToken(req);
+    const userId = getUserIdFromToken(req)
+
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
+    const fullCart = await buildFullCart(user.cartData);
+
+    res.json(fullCart);
+
+  } catch (error) {
+    console.log('====================================');
+    console.log(error.message);
+    console.log('====================================');
+    res.status(500).json({ msg: error.message });
+  }
+};
+
+// clear cart
+export const clearCart = async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req)
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ msg: "User not found" });
     user.cartData = [];
     await user.save();
     res.json({ msg: "Cart cleared" });
   } catch (error) {
-    console.error("Clear cart error:", error);
+    console.log('====================================');
+    console.log(error);
+    console.log('====================================');
     res.status(500).json({ msg: error.message });
   }
-};
-
-
+};  
