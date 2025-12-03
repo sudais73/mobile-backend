@@ -126,31 +126,6 @@ export const addToCart = async (req, res) => {
 
 
 
-// export const removeFromCart = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const { productId } = req.body;
-
-//     const user = await User.findById(userId);
-//     if (!user) return res.status(404).json({ msg: "User not found" });
-
-//     user.cartData = user.cartData.filter(
-//       item => item.productId.toString() !== productId.toString()
-//     );
-
-//     await user.save();
-
-//     const fullCart = await buildFullCart(user.cartData);
-
-//     res.json({
-//       msg: "Item removed",
-//       cart: fullCart
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({ msg: error.message });
-//   }
-// };
 
 
 export const removeFromCart = async (req, res) => {
@@ -166,7 +141,6 @@ export const removeFromCart = async (req, res) => {
     if (!user) return res.status(404).json({ msg: "User not found" });
 
     user.cartData = user.cartData.filter(item => {
-      // Make sure both sides are strings
       const id = item.productId?.toString();
       return id !== productId.toString();
     });
