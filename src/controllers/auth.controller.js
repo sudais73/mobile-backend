@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import 'dotenv/config'
 import axios from 'axios'
+import { getUserIdFromToken } from "../utils/getUserId.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "my_jwt_secret";
 
@@ -59,8 +60,12 @@ export const login = async (req, res) => {
 
 export const getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
-    res.json(user);
+    const userId = getUserIdFromToken(req)
+    const user = await User.findById(userId).select("-password");
+    res.json(user, userId);
+    console.log('====================================');
+    console.log(user, userId);
+    console.log('====================================');
   } catch (error) {
     res.status(500).json({ msg: error.message });
   }
@@ -89,7 +94,8 @@ const buildFullCart = async (cartData) => {
 
 export const addToCart = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getUserIdFromToken(req)
+    
     const { productId, quantity } = req.body;
 
     const user = await User.findById(userId);
@@ -130,7 +136,8 @@ export const addToCart = async (req, res) => {
 
 export const removeFromCart = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getUserIdFromToken(req)
+  
     const { productId } = req.body;
 
     if (!productId) {
@@ -162,7 +169,8 @@ export const removeFromCart = async (req, res) => {
 
 export const updateCartQty = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getUserIdFromToken(req)
+  
     const { productId, quantity } = req.body;
 
     const user = await User.findById(userId);
@@ -195,7 +203,9 @@ export const updateCartQty = async (req, res) => {
 
 export const getCart = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const userId = getUserIdFromToken(req)
+
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
     const fullCart = await buildFullCart(user.cartData);
@@ -213,7 +223,9 @@ export const getCart = async (req, res) => {
 // clear cart
 export const clearCart = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const userId = getUserIdFromToken(req)
+
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
     user.cartData = [];
     await user.save();

@@ -7,24 +7,20 @@ export const createCheckoutSession = async (req, res) => {
   try {
     const { orderId } = req.body;
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ msg: "Order not found" });
-    }
+    if (!orderId) return res.status(400).json({ msg: "Order ID required" });
 
-    // Format Stripe line items correctly
-    const lineItems = order.items.map((item) => ({
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ msg: "Order not found" });
+
+    const lineItems = order.items.map(item => ({
       price_data: {
         currency: "usd",
-        product_data: {
-          name: item.title,
-        },
-        unit_amount: item.price * 100, // ✔ Stripe requires "price"
+        product_data: { name: item.title },
+        unit_amount: Math.round(item.price * 100),
       },
-      quantity: item.quantity, // ✔ number of items
+      quantity: item.quantity,
     }));
 
-    // Create Stripe session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
@@ -35,8 +31,9 @@ export const createCheckoutSession = async (req, res) => {
     });
 
     res.json({ url: session.url });
+
   } catch (err) {
-    console.log("Payment error:", err.message);
-    res.status(500).json({ msg: "Payment failed" });
+    console.error("Payment error full:", err); // log full object
+    res.status(500).json({ msg: "Payment failed", error: err.message });
   }
 };

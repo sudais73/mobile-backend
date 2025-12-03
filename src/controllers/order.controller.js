@@ -1,8 +1,10 @@
 import Order from "../models/order.model.js";
+import { getUserIdFromToken } from "../utils/getUserId.js";
 
 export async function createOrder(req, res) {
   try {
-    const userId = req.user.id;
+        const userId = getUserIdFromToken(req)
+    
     const { items, total } = req.body;
 
     const newOrder = new Order({
@@ -28,7 +30,7 @@ export async function createOrder(req, res) {
 
 export async function getUserOrders(req, res) {
   try {
-    const userId = req.user.id;
+        const userId = getUserIdFromToken(req)
     const orders = await Order.find({ userId });
 
     res.status(200).json(orders);
