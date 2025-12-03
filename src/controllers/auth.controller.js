@@ -1,3 +1,19 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
@@ -49,6 +65,18 @@ export const login = async (req, res) => {
   }
 };
 
+export const getUser = async (req, res) => {
+  try {
+    const userId = getUserIdFromToken(req)
+    const user = await User.findById(userId).select("-password");
+    res.json(user, userId);
+    console.log('====================================');
+    console.log(user, userId);
+    console.log('====================================');
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+};
 // ------------------------ UTILS ------------------------
 const fetchProduct = async (productId) => {
   try {
@@ -173,3 +201,5 @@ export const clearCart = async (req, res) => {
     res.status(500).json({ msg: error.message });
   }
 };
+
+
