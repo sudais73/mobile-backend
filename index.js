@@ -8,10 +8,15 @@ import connectDB from "./src/config/db.js";
 import paymentRoutes from './src/routes/payment.routes.js';
 
 const app = express();
+const allowedOrigins = [
+  "http://localhost:8081",   // local dev
+  "https://my-frontend-domain.com"  // deployed frontend
+];
+
 app.use(cors({
-  origin: "*",
-  methods: "GET,POST,PUT,DELETE",
-  allowedHeaders: "Content-Type, Authorization",
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
 }));
 
 app.use(express.json());
