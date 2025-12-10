@@ -10,7 +10,7 @@ import paymentRoutes from './src/routes/payment.routes.js';
 const app = express();
 const allowedOrigins = [
   "http://localhost:8081",   // local dev
-  "https://my-frontend-domain.com"  // deployed frontend
+  "https://ecommerce-mobile-app-rn.netlify.app"  // deployed frontend
 ];
 
 app.use(cors({
