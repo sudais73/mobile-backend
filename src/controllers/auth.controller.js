@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import Product from '../models/product.model.js'
 import 'dotenv/config'
-import axios from 'axios'
 import { getUserIdFromToken } from "../utils/getUserId.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "my_jwt_secret";
@@ -75,62 +75,55 @@ export const getUser = async (req, res) => {
 
 
 
-const fetchProduct = async (productId) => {
-  const { data } = await axios.get(
-    `https://fakestoreapi.com/products/${productId}`
-  );
-  return data;
-};
-
-const buildFullCart = async (cartData) => {
-  return Promise.all(
-    cartData.map(async (item) => ({
-      product: await fetchProduct(item.productId),
-      quantity: item.quantity
-    }))
-  );
-};
-
-
 export const addToCart = async (req, res) => {
   try {
-    const userId = getUserIdFromToken(req)
+    const userId = getUserIdFromToken(req);
     
     const { productId, quantity } = req.body;
+    console.log('====================================');
+    console.log("productid", productId);
+    console.log('====================================');
+
+    // Validate productId
+    if (!productId) {
+      return res.status(400).json({ msg: "Product ID is required" });
+    }
 
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
-    const existingItem = user.cartData.find(
-      item => item.productId === productId
+    // Find existing item in cart
+    const existingItemIndex = user.cartData.findIndex(item => 
+      item.productId === productId
     );
 
-    if (existingItem) {
-      existingItem.quantity += quantity || 1;
+    if (existingItemIndex !== -1) {
+      // Update quantity if item already exists
+      user.cartData[existingItemIndex].quantity += quantity || 1;
     } else {
+      // Add new item to cart
       user.cartData.push({
-        productId,
+        productId: productId,
         quantity: quantity || 1
       });
     }
 
     await user.save();
 
-    // Build full cart response
-    const fullCart = await buildFullCart(user.cartData);
-
-    return res.json({
-      msg: "Added to cart",
-      cartData: fullCart
+  
+    res.status(200).json({ 
+      msg: "Product added to cart", 
+      cartData:user.cartData
     });
 
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ msg: error.message });
+    console.error("Add to cart error:", error);
+
+    res.status(500).json({ msg: "Server error", error: error.message });
   }
 };
-
-
 
 
 
@@ -154,11 +147,11 @@ export const removeFromCart = async (req, res) => {
 
     await user.save();
 
-    const fullCart = await buildFullCart(user.cartData);
+   
 
     res.json({
       msg: "Item removed",
-      cart: fullCart
+      cart: user.cartData
     });
 
   } catch (error) {
@@ -187,11 +180,11 @@ export const updateCartQty = async (req, res) => {
 
     await user.save();
 
-    const fullCart = await buildFullCart(user.cartData);
+   
 
     res.json({
       msg: "Quantity updated",
-      cartData: fullCart
+      cartData: user.cartData
     });
 
   } catch (error) {
@@ -203,20 +196,81 @@ export const updateCartQty = async (req, res) => {
 
 export const getCart = async (req, res) => {
   try {
-    const userId = getUserIdFromToken(req)
-
+    const userId = getUserIdFromToken(req);
+    
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
-    const fullCart = await buildFullCart(user.cartData);
+    // Extract all product IDs from the cart
+    const productIds = user.cartData.map(item => item.productId);
+    
+    // Fetch all products at once (more efficient than individual queries)
+    const products = await Product.find({ _id: { $in: productIds } });
+    
+    // Create a map for quick lookup by product ID
+    const productMap = {};
+    products.forEach(product => {
+      productMap[product._id.toString()] = {
+        id: product._id,
+        title:product.title,
+        name: product.name,
+        price: product.price,
+        description: product.description,
+        image: product.image,
 
-    res.json(fullCart);
+      };
+    });
+    
+    // Combine cart items with product details
+    const cartWithDetails = user.cartData.map(cartItem => {
+      const product = productMap[cartItem.productId.toString()];
+      
+      // If product not found (e.g., was deleted), still return cart item but mark it
+      if (!product) {
+        return {
+          ...cartItem.toObject ? cartItem.toObject() : cartItem,
+          productDetails: null,
+          productExists: false,
+          message: "Product not found or has been removed"
+        };
+      }
+      
+      return {
+        ...cartItem.toObject ? cartItem.toObject() : cartItem,
+        productDetails: product,
+        productExists: true,
+        // Calculate subtotal for this item
+        subtotal: product.price * cartItem.quantity
+      };
+    });
+    
+    // Calculate cart totals
+    const cartSummary = {
+      items: cartWithDetails.length,
+      totalQuantity: cartWithDetails.reduce((sum, item) => sum + item.quantity, 0),
+      subtotal: cartWithDetails.reduce((sum, item) => {
+        if (item.productExists && item.subtotal) {
+          return sum + item.subtotal;
+        }
+        return sum;
+      }, 0),
+    };
+    
+    res.json({
+      cartItems: cartWithDetails,
+      summary: cartSummary,
+      success: true
+    });
 
   } catch (error) {
-    console.log('====================================');
-    console.log(error.message);
-    console.log('====================================');
-    res.status(500).json({ msg: error.message });
+    console.error("Get cart error:", error);
+    res.status(500).json({ 
+      msg: "Server error", 
+      error: error.message,
+      success: false 
+    });
   }
 };
 

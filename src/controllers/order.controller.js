@@ -3,8 +3,7 @@ import { getUserIdFromToken } from "../utils/getUserId.js";
 
 export async function createOrder(req, res) {
   try {
-        const userId = getUserIdFromToken(req)
-    
+    const userId = getUserIdFromToken(req)
     const { items, total } = req.body;
 
     const newOrder = new Order({
@@ -15,7 +14,6 @@ export async function createOrder(req, res) {
 
     await newOrder.save();
 
-    console.log("Order created:", newOrder);
 
     res.status(201).json({
       message: "Order created successfully",

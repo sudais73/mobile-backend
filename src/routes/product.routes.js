@@ -1,15 +1,13 @@
-import express from 'express';
+import express from "express";
+import { addProduct, deleteProduct, getProduct, getProducts, updateProduct } from "../controllers/product.controller.js";
+import multer from "multer";
+const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
-// Sample route for creating a product
-router.post('/', (req, res) => {
-  // Product creation logic here
-  res.status(201).json({ message: 'Product created successfully' });
-});
+router.post("/",upload.single("image"), addProduct);
+router.get("/", getProducts);
+router.get("/:id", getProduct);
+router.put("/:id", updateProduct);
+router.delete("/:id", deleteProduct);
 
-// Sample route for fetching all products
-router.get('/', (req, res) => {
-  // Fetching products logic here
-  res.status(200).json({ products: [] });
-}); 
 export default router;

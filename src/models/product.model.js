@@ -16,19 +16,9 @@ const productSchema = new mongoose.Schema({
     // Rating
     rating: {
         type: Number,
-        default: 0,   // average rating
-    },
-
-    // optional: detailed ratings
-    ratingDetails: [
-        {
-            userId: { 
-                type: mongoose.Schema.Types.ObjectId, ref: "User" },
-            rating: { 
-                type: Number, min: 1, max: 5 },
-            review: { type: String }
-        }
-    ]
+        default: 0,   
+    }
 }, { timestamps: true });
 
-export default mongoose.model("Product", productSchema);
+const Product = mongoose.model("Product", productSchema);
+export default Product
